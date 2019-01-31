@@ -6,13 +6,13 @@ config = {}
 config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid'  # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
-config['epochs'] = 50  # Number of epochs to train the model
+config['epochs'] = 400  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.0001  # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.003  # Learning rate of gradient descent algorithm
 
 
 def softmax(x):
@@ -218,8 +218,11 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         'train_acc': [],
         'valid_err': [],
         'valid_acc': [],
-        'weights': {},
-        'bias': {},
+        'best_weights': {},  # store the best weight in case of early stop
+        'best_bias': {},  # store the best bias in case of early stop
+        'best_loss': None,  # store the best loss in case of early stop
+        'weights': {},  # store the weights from last training
+        'bias': {}, # store the bias from last training
         'weights_diff': {},
         'bias_diff': {}
     }
@@ -231,28 +234,37 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         if config['momentum_gamma'] != 0:
             raise ValueError("Momentum gamma should be set to 0 since it's not used!")
 
+    if config['early_stop']:
+        print("Early stop is applied!")
+    else:
+        print('Early stop is NOT applied!')
+
     epoch_s = np.linspace(1, config['epochs'], config['epochs'])
     train_tot_idx = np.arange(0, len(X_train), dtype=int)
+    early_stop_times = 0
     for epoch in tqdm(epoch_s, desc='epoch'):
         valid_err, valid_logits = model.forward_pass(X_valid, y_valid)
         # early stop
         if len(result['valid_err']) > 0:
-            if valid_err > result['valid_err'][-1]:
-                # recover weights and bias from last time
-                layer_no = 0
-                for layer_idx, layer in enumerate(model.layers):
-                    if isinstance(layer, Layer):
-                        layer_no += 1
-                        layer.w = result['weights'][layer_no]
-                        layer.b = result['bias'][layer_no]
+            # enter only if validation loss increases with early stop applied
+            if (valid_err > result['valid_err'][-1]) & (config['early_stop']):
+                early_stop_times += 1
+                # stop training when early stop times larger than threshold
+                if early_stop_times > config['early_stop_epoch']:
+                    # recover the best weights and bias before early stop
+                    layer_no = 0
+                    for layer_idx, layer in enumerate(model.layers):
+                        if isinstance(layer, Layer):
+                            layer_no += 1
+                            layer.w = result['best_weights'][layer_no]
+                            layer.b = result['best_bias'][layer_no]
 
-                # store early stop epoch number
-                config['early_stop_epoch'] = epoch - 1  # since this epoch doesn't begin training yet
+                    print('Early stop!')
+                    break
+            else:
+                early_stop_times = 0  # reset early stop times once loss decreases
 
-                print('Early stop!')
-                break
-
-        # we need to store a bunch of things before updating
+        # we need to store a bunch of stuff before updating
         # store accuracy and loss error for validation data
         result['valid_err'].append(valid_err)
         result['valid_acc'].append(get_accuracy(valid_logits, y_valid))
@@ -282,11 +294,22 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
                 result['weights'][layer_no] = layer.w
                 result['bias'][layer_no] = layer.b
 
+        # store best weights, bias and loss for validation data
+        valid_loss_now = model.forward_pass(X_valid, y_valid)[0]  # current validation loss
+        # initialize, or update when current validation loss is better than ever
+        if (result['best_loss'] == None) or (valid_loss_now < result['best_loss']):
+            result['best_loss'] = valid_loss_now
+            layer_no = 0
+            for layer_idx, layer in enumerate(model.layers):
+                if isinstance(layer, Layer):
+                    result['best_weights'][layer_no] = layer.w
+                    result['best_bias'][layer_no] = layer.b
+
         # store epoch
         result['epoch'].append(epoch)
 
         # begin update
-        np.random.seed(100)  #TODO set a fixed seed?
+        np.random.seed(100)  # Fixed seed to repeat the result, train batch is still different each time though.
         np.random.shuffle(train_tot_idx)
         num_batch = int(len(train_tot_idx) / config['batch_size'])  # how many batch we have
         for i in range(num_batch):
@@ -306,7 +329,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
                     layer.w += config['learning_rate'] * layer.d_w + config['momentum_gamma'] * result['weights_diff'][layer_no]
                     layer.b += config['learning_rate'] * layer.d_b + config['momentum_gamma'] * result['bias_diff'][layer_no]
 
-    # save result about train and validation data
+    # save train and validation result
     pickle.dump(result, open('train_validation_result.pkl', 'wb'))
 
 
