@@ -3,16 +3,16 @@ import pickle
 from tqdm import tqdm
 
 config = {}
-config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
-config['activation'] = 'sigmoid'  # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
+config['layer_specs'] = [784, 47, 47, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
+config['activation'] = 'tanh'  # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
-config['epochs'] = 400  # Number of epochs to train the model
+config['epochs'] = 200  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
-config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
+config['early_stop_epoch'] = 3  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.003  # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.0001  # Learning rate of gradient descent algorithm
 
 
 def softmax(x):
@@ -224,15 +224,22 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         'weights': {},  # store the weights from last training
         'bias': {}, # store the bias from last training
         'weights_diff': {},
-        'bias_diff': {}
+        'bias_diff': {},
+        'config': config
     }
 
+    # configuration judgement
     if config['momentum']:
         print('Momentum is applied!')
     else:
         print('Momentum is NOT applied!')
         if config['momentum_gamma'] != 0:
             raise ValueError("Momentum gamma should be set to 0 since it's not used!")
+
+    # # data normalization
+    # mean, std = np.average(X_train, axis=0), np.std(X_train, axis=0)  # extract mean and std from train data
+    # X_train = (X_train - mean) / std
+    # X_valid = (X_valid - mean) / std
 
     if config['early_stop']:
         print("Early stop is applied!")
@@ -263,6 +270,11 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
                     break
             else:
                 early_stop_times = 0  # reset early stop times once loss decreases
+
+        # stop when validation error blows up
+        if np.isnan(valid_err):
+            print('Validation loss blows up, try to lower the learning rate, or spot the bug;)')
+            break
 
         # we need to store a bunch of stuff before updating
         # store accuracy and loss error for validation data
@@ -295,13 +307,13 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
                 result['bias'][layer_no] = layer.b
 
         # store best weights, bias and loss for validation data
-        valid_loss_now = model.forward_pass(X_valid, y_valid)[0]  # current validation loss
         # initialize, or update when current validation loss is better than ever
-        if (result['best_loss'] == None) or (valid_loss_now < result['best_loss']):
-            result['best_loss'] = valid_loss_now
+        if (result['best_loss'] == None) or (valid_err < result['best_loss']):
+            result['best_loss'] = valid_err
             layer_no = 0
             for layer_idx, layer in enumerate(model.layers):
                 if isinstance(layer, Layer):
+                    layer_no += 1
                     result['best_weights'][layer_no] = layer.w
                     result['best_bias'][layer_no] = layer.b
 
@@ -330,7 +342,10 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
                     layer.b += config['learning_rate'] * layer.d_b + config['momentum_gamma'] * result['bias_diff'][layer_no]
 
     # save train and validation result
-    pickle.dump(result, open('train_validation_result.pkl', 'wb'))
+    name = 'train_validation_result_%s_lr%.1g_epoch%d_esepoch%d_dobule_hl.pkl' \
+           %(config['activation'], config['learning_rate'],
+             result['epoch'][-1], config['early_stop_epoch'])
+    pickle.dump(result, open(name, 'wb'))
 
 
 def test(model, X_test, y_test, config):
