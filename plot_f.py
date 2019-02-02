@@ -1,8 +1,8 @@
 import pickle
 import matplotlib.pyplot as plt
 
-half_filename = 'train_validation_result_tanh_lr0.0001_epoch200_esepoch3_hl25.pkl'
-double_filename = 'train_validation_result_tanh_lr0.0001_epoch200_esepoch3_hl100.pkl'
+half_filename = 'train_validation_result_tanh_lr0.0001_epoch300_esepoch3_hl25.pkl'
+double_filename = 'train_validation_result_tanh_lr0.0001_epoch300_esepoch3_hl100.pkl'
 
 result_half = pickle.load(open(half_filename, 'rb'))
 result_double = pickle.load(open(double_filename, 'rb'))

@@ -1,8 +1,8 @@
 import pickle
 import matplotlib.pyplot as plt
 
-relu_filename = 'train_validation_result_ReLU_lr5e_05_epoch600_esepoch3.pkl'
-sigmoid_filename = 'train_validation_result_sigmoid_lrp0001_epoch600_esepoch3.pkl'
+relu_filename = 'train_validation_result_ReLU_lr0.0001_epoch293_esepoch3_hl50.pkl'
+sigmoid_filename = 'train_validation_result_sigmoid_lr0.0001_epoch733_esepoch3_hl50.pkl'
 
 result_sigmoid = pickle.load(open(sigmoid_filename, 'rb'))
 result_relu = pickle.load(open(relu_filename, 'rb'))

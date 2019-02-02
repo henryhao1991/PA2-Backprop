@@ -1,7 +1,7 @@
 import pickle
 import matplotlib.pyplot as plt
 
-result = pickle.load(open('train_validation_result_tanh_lrp0001_epoch200.pkl', 'rb'))
+result = pickle.load(open('train_validation_result_tanh_lr0.0001_epoch300_esepoch3_hl50.pkl', 'rb'))
 savefig = True
 
 fig = plt.figure(figsize=(8, 6))

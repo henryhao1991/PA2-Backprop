@@ -1,7 +1,7 @@
 import pickle
 import matplotlib.pyplot as plt
 
-filename = 'train_validation_result_tanh_lr0.0001_epoch200_esepoch3_dobule_hl.pkl'
+filename = 'train_validation_result_tanh_lr0.0001_epoch150_esepoch3_double_hl.pkl'
 
 result = pickle.load(open(filename, 'rb'))
 savefig = True

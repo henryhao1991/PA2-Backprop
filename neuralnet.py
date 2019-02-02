@@ -3,10 +3,10 @@ import pickle
 from tqdm import tqdm
 
 config = {}
-config['layer_specs'] = [784, 47, 47, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
+config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'tanh'  # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
-config['epochs'] = 200  # Number of epochs to train the model
+config['epochs'] = 300  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 3  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
@@ -120,7 +120,7 @@ class Activation:
 class Layer():
     def __init__(self, in_units, out_units):
         np.random.seed(42)
-        self.w = np.random.randn(in_units, out_units)  # Weight matrix
+        self.w = np.random.randn(in_units, out_units) * 0.01  # Weight matrix
         self.b = np.zeros((1, out_units)).astype(np.float32)  # Bias
         self.x = None  # Save the input to forward_pass in this
         self.a = None  # Save the output of forward pass in this (without activation)
@@ -338,13 +338,22 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
             for layer_idx, layer in enumerate(model.layers):
                 if isinstance(layer, Layer):
                     layer_no += 1
-                    layer.w += config['learning_rate'] * layer.d_w + config['momentum_gamma'] * result['weights_diff'][layer_no]
-                    layer.b += config['learning_rate'] * layer.d_b + config['momentum_gamma'] * result['bias_diff'][layer_no]
+                    layer.w += config['learning_rate'] * layer.d_w + config['momentum_gamma'] * result['weights_diff'][layer_no] - config['L2_penalty'] * layer.w
+                    layer.b += config['learning_rate'] * layer.d_b + config['momentum_gamma'] * result['bias_diff'][layer_no] - config['L2_penalty'] * layer.b
 
     # save train and validation result
-    name = 'train_validation_result_%s_lr%.1g_epoch%d_esepoch%d_dobule_hl.pkl' \
-           %(config['activation'], config['learning_rate'],
-             result['epoch'][-1], config['early_stop_epoch'])
+    if len(config['layer_specs'])==4:
+        name = 'train_validation_result_%s_lr%.1g_epoch%d_esepoch%d_double_hl.pkl' \
+               %(config['activation'], config['learning_rate'],
+                 result['epoch'][-1], config['early_stop_epoch'])
+    elif config['L2_penalty']:
+        name = 'train_validation_result_%s_lr%.1g_epoch%d_esepoch%d_hl%d_lambda%s.pkl' \
+               %(config['activation'], config['learning_rate'],
+                 result['epoch'][-1], config['early_stop_epoch'],config['layer_specs'][1],config['L2_penalty'])
+    else:
+        name = 'train_validation_result_%s_lr%.1g_epoch%d_esepoch%d_hl%d.pkl' \
+               %(config['activation'], config['learning_rate'],
+                 result['epoch'][-1], config['early_stop_epoch'],config['layer_specs'][1])
     pickle.dump(result, open(name, 'wb'))
 
 

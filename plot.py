@@ -1,7 +1,7 @@
 import pickle
 import matplotlib.pyplot as plt
 
-result = pickle.load(open('train_validation_result.pkl', 'rb'))
+result = pickle.load(open('train_validation_result_tanh_lr0.0001_epoch300_esepoch3_hl50.pkl', 'rb'))
 savefig = False
 
 fig = plt.figure(figsize=(8, 6))
@@ -21,5 +21,5 @@ lns = ln1 + ln2 + ln3 + ln4
 labs = [l.get_label() for l in lns]
 plt.legend(lns, labs, bbox_to_anchor=(1, 0.1), loc='lower right')
 if savefig:
-    plt.savefig('train_validation_result.pdf', dpi=300)
+    plt.savefig('L2_p0001.pdf', dpi=300)
 plt.show()
